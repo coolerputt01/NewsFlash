@@ -82,7 +82,7 @@ replace_double_quotes(char *value)
 int
 env_load(const char *path, const int overwrite)
 {
-    char full_path[strlen(path) + strlen(ENV_FILE_NAME) + 1];
+    char full_path[512];
     
     if (path == NULL || path[0] == '\0') {
         strcpy(full_path, ENV_FILE_NAME);
@@ -98,28 +98,43 @@ env_load(const char *path, const int overwrite)
     char *line = NULL;
     size_t len = 0;
     ssize_t read;
+    int val = 0;
     
     while ((read = getline(&line, &len, f)) != -1) {
         // ignore lines starting with # and whitespace
         if (COMMENT_CHAR == line[0] || isspace(line[0])) {
             continue;
         }
-        
-        char *key = strsep(&line, SEPERATOR);
-        char *value = strsep(&line, NEW_LINE);
 
-        replace_double_quotes(value);
+        char* line_copy = strdup(line);
 
-        if (setenv(key, trim_whitespace(value), overwrite) != 0) {
-            fclose(f);
-            free(line);
-            return 1;
+        if (line_copy == NULL) {
+            val = 1;
+            break;
         }
+        char* original_copy = line_copy;
+        char *key = strsep(&line_copy, SEPERATOR);
+        char *value = strsep(&line_copy, NEW_LINE);
+
+        if(key != NULL && value != NULL){
+            char *key_copy = strdup(key);
+            char *value_copy = strdup(value);
+
+            if (key_copy && value_copy) {
+                replace_double_quotes(value_copy);
+                setenv(key_copy, trim_whitespace(value_copy), overwrite);
+            }
+
+
+            free(key_copy);
+            free(value_copy);
+        }
+        free(original_copy);
     }
 
     fclose(f);
-
-    return 0;
+    free(line);
+    return val;
 }
 
 #endif

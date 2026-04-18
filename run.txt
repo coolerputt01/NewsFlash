@@ -1,0 +1,1 @@
+clang++ -std=c++23 -I./include/env -I./include/json -I./include/httpreq -I./include/logger index.cpp -o  build/main -lssl -lcrypto

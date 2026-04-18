@@ -3,8 +3,11 @@
 #include <cstdlib>
 
 int main(void) {
-    env_load("",0);
-    int fetchDailyNews = fetchNews(std::getenv("MEDIA_STACK_ACCESS_KEY"));
+    env_load(".env",0);
+    const char* media_stack_api_url = std::getenv("MEDIA_STACK_ACCESS_KEY");
+    const char* supabase_api_url = std::getenv("SUPABASE_SECRET_KEY");
+    
+    int fetchDailyNews = fetchNews(media_stack_api_url,supabase_api_url);
     if(fetchDailyNews < 0){
         return -1;
     }
