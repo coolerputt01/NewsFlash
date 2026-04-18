@@ -1,25 +1,28 @@
-#include <vix/requests/requests>
-#include <vix/utils/Env.hpp>
-#include <vix/utils/Logger.hpp>
+#include "../include/httpreq/httplib.h"
+#include "../include/logger/loggand.hpp"
 #include "../config.hpp"
 
-auto &log = vix::utils::Logger::getInstance();
-log.setLevel(vix::utils::Logger::Level::Debug);
 
-const std::string MEDIASTACK_ACCESS_KEY = vix::utils::env_or("MEDIA_STACK_ACCESS_KEY","nil");
-
-int fetchNews(){
-    std::string API_URL = MEDIASTACK_API_URL + "?access_key=" + MEDIASTACK_ACCESS_KEY;
+int fetchNews(std::string api_key){
+    std::string API_URL = "/v1/news?access_key=" + api_key;
+    Logger log = Logger("nil",LOG_LEVEL::DEBUG);
     try{
-        auto res = vix::requests::get(API_URL);
-        std::string struc_res = "Response - "+res.status_code +'\n'+res.text+'\n';
-        log.info(struc_res);
-        if(!response.ok()){
+        httplib::Client client(MEDIASTACK_API_URL);
+        if(auto res = client.Get(API_URL)){
+            res->status;
+            res->body;
+            log.message = "API call successful\n";
+            log.status = LOG_LEVEL::SUCCESS;
+            log.log();
+            return 1;
+        }else {
             throw;
         }
     }
     catch(const std::exception &err){
-        log.error(e.what());
+        log.message = err.what();
+        log.status = LOG_LEVEL::ERROR;
+        log.log();
         return -1;
     }
 }
