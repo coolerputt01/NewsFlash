@@ -1,1 +1,2 @@
-clang++ -std=c++23 -I./include/env -I./include/json -I./include/httpreq -I./include/logger index.cpp -o  build/main -lssl -lcrypto
+clang++ -std=c++23 -I/usr/local/include -I./include/env -I./include/json -I./include/httpreq -I./include/logger index.cpp -o  build/main -lTgBot -lboost_system -lssl -lcrypto -lpthread
+ 
