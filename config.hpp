@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <cstdlib>
-#include <tgbot/tgbot.h>
 
 #include "include/env/dot_env.h"
 
