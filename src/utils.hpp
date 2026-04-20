@@ -3,16 +3,38 @@
 
 #include <string>
 #include <stdexcept>
+#include <functional>
+#include <thread>
+#include <ctime>
 #include <tgbot/tgbot.h>
 
 #include "../include/httpreq/httplib.h"
 #include "../include/logger/loggand.hpp"
 #include "../include/json/nholmann.hpp"
 #include "../config.hpp"
-#include "./newsModel.hpp"
 
 
 using json = nlohmann::json;
+
+void runFunctionOnTime(int targetHour, int targetMinute, std::function<void()> callback) {
+    std::thread([=]() {
+        while (true) {
+            auto now = std::chrono::system_clock::now();
+            std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+            std::tm *local_time = std::localtime(&now_time);
+
+            if (local_time->tm_hour == targetHour &&
+                local_time->tm_min == targetMinute) {
+
+                callback();
+
+                std::this_thread::sleep_for(std::chrono::minutes(1));
+            }
+
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+        }
+    }).detach();
+}
 
 json fetchJsonBatch(std::string api_key){
     std::string API_URL = "/rest/v1/news";
@@ -93,12 +115,10 @@ bool sendBatchMessages(TgBot::Bot &bot, std::string apikey, std::string chatID) 
         for (auto& news : newsAlerts) {
             std::string messageText;
 
-            // Title
             if (news.contains("title") && news["title"].is_string()) {
                 messageText += "📰 *" + news["title"].get<std::string>() + "*\n\n";
             }
 
-            // Description
             if (news.contains("description") && news["description"].is_string()) {
                 std::string desc = news["description"].get<std::string>();
                 if (!desc.empty()) {
@@ -109,12 +129,10 @@ bool sendBatchMessages(TgBot::Bot &bot, std::string apikey, std::string chatID) 
                 }
             }
 
-            // URL
             if (news.contains("url") && news["url"].is_string()) {
                 messageText += "🔗 [Read more](" + news["url"].get<std::string>() + ")\n";
             }
 
-            // Date
             if (news.contains("published_at") && news["published_at"].is_string()) {
                 messageText += "📅 " + news["published_at"].get<std::string>();
             }
@@ -127,13 +145,10 @@ bool sendBatchMessages(TgBot::Bot &bot, std::string apikey, std::string chatID) 
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
             } catch (const TgBot::TgException&) {
-                // Fallback: plain text (strip markdown)
                 std::string plainText = messageText;
 
-                // Remove markdown symbols
                 plainText.erase(std::remove(plainText.begin(), plainText.end(), '*'), plainText.end());
 
-                // Replace markdown links [text](url) → text (url)
                 size_t pos = 0;
                 while ((pos = plainText.find("[", pos)) != std::string::npos) {
                     size_t end = plainText.find("](", pos);
@@ -154,7 +169,6 @@ bool sendBatchMessages(TgBot::Bot &bot, std::string apikey, std::string chatID) 
             }
         }
 
-        // Summary
         if (messageCount > 0) {
             bot.getApi().sendMessage(chatID, "✅ Sent " + std::to_string(messageCount) + " news updates!");
         } else {
@@ -248,15 +262,22 @@ int fetchNews(std::string mediastack_api_key, std::string supabase_api_key){
     }
 }
 
-bool initialiseBot(auto &bot, std::string apikey, std::string chatID){
+bool initialiseBot(auto &bot,std::string mediastack_api_key, std::string supabase_api_key, std::string chatID){
+    runFunctionOnTime(9, 12, [&]() {
+        fetchNews(mediastack_api_key, supabase_api_key);
+    });
+
+    runFunctionOnTime(9, 14, [&]() {
+        sendBatchMessages(bot, supabase_api_key, chatID);
+    });
     bot.getEvents().onCommand("start", [&bot](TgBot::Message::Ptr message) {
         bot.getApi().sendMessage(message->chat->id, "Hi!");
     });
 
-    bot.getEvents().onCommand("news", [&bot,&apikey,&chatID](TgBot::Message::Ptr message) {
+    bot.getEvents().onCommand("news", [&bot,&supabase_api_key,&chatID](TgBot::Message::Ptr message) {
         std::string chatId = std::to_string(message->chat->id);
         bot.getApi().sendMessage(message->chat->id, "Fetching latest news...");
-        sendBatchMessages(bot, apikey, chatID);
+        sendBatchMessages(bot, supabase_api_key, chatID);
     });
     try {
         printf("Bot username: %s\n", bot.getApi().getMe()->username.c_str());

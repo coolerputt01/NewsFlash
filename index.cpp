@@ -5,17 +5,26 @@
 
 int main(void) {
     env_load(".env",0);
-    const char* media_stack_api_url = std::getenv("MEDIA_STACK_ACCESS_KEY");
-    const char* supabase_api_url = std::getenv("SUPABASE_SECRET_KEY");
-    const char* TELEGRAM_BOT_API_TOKEN = std::getenv("TELEGRAM_BOT_TOKEN");
-    const char* TELEGRAM_BOT_CHAT_ID = std::getenv("TELEGRAM_CHAT_ID");
-    TgBot::Bot bot(TELEGRAM_BOT_API_TOKEN);
+    auto require_env = [](const char* name) -> std::string {
+        const char* val = std::getenv(name);
+        if (!val) {
+            throw std::runtime_error(std::string("Missing env var: ") + name);
+        }
+        return std::string(val);
+    };
+
+    
+    std::string supabase_api_url = require_env("SUPABASE_SECRET_KEY");
+    std::string telegram_token = require_env("TELEGRAM_BOT_TOKEN");
+    std::string chat_id = require_env("TELEGRAM_CHAT_ID");
+    std::string media_stack_api_url = require_env("MEDIA_STACK_ACCESS_KEY");
+    TgBot::Bot bot(telegram_token);
     
     // int fetchDailyNews = fetchNews(media_stack_api_url,supabase_api_url);
     // if(fetchDailyNews < 0){
     //     return -1;
     // }
-    initialiseBot(bot,supabase_api_url,TELEGRAM_BOT_CHAT_ID);
+    initialiseBot(bot,media_stack_api_url,supabase_api_url,chat_id);
 
     std::cout<<"Succesfully fetched news\n";
 }
